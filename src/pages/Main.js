@@ -33,6 +33,7 @@ import {
   startStaking,
 } from "@/SmartContractInteraction";
 import { useRouter } from "next/router";
+import BalanceItem from "./components/BalanceItem";
 function Main() {
   const { address, isConnected } = useAccount();
   const [contract, setContract] = useState(null);
@@ -41,6 +42,16 @@ function Main() {
   const [sourceToken, setSourceToken] = useState("usd");
   const [destinationToken, setDestinationToken] = useState("usdt");
   const [walletAddress, setWalletAddress] = useState(null);
+  const [usdBalance, setUsdBalance] = useState(0);
+  const [usdtBalance, setUsdtBalance] = useState(0);
+  const [liquidityBalance, setLiquidityBalance] = useState(0);
+  /**
+   * liquidity state variables
+   */
+  const [usdLiquidity, setUsdLiquidity] = useState(0);
+  const [usdtLiquidity, setUsdtLiquidity] = useState(0);
+  const [liquidityClaimAmount, setLiquidityClaimAmount] = useState(0);
+
   const Navigate = useRouter();
 
   async function ensureContractIsFetched() {
@@ -65,6 +76,19 @@ function Main() {
   async function Swap() {
     alert("Swapping" + swapAmount + sourceToken + " for " + destinationToken);
   }
+  async function addLiquidity() {
+    alert(
+      "adding " +
+        usdLiquidity +
+        " USD and " +
+        usdtLiquidity +
+        " USDT to liquidity"
+    );
+  }
+  async function removeLiquidity() {
+    alert("removing " + liquidityClaimAmount + " liquidity balance");
+  }
+
   return (
     <Box
       width={"100vw"}
@@ -92,6 +116,11 @@ function Main() {
         {!walletAddress && <ConnectButton />}
         {walletAddress && (
           <VStack padding={"10vh"}>
+            <HStack width={"50vw"} justify={"center"} spacing={10}>
+              <BalanceItem label={"USD"} amount={usdBalance} />
+              <BalanceItem label={"USDt"} amount={usdtBalance} />
+              <BalanceItem label={"Liquidity"} amount={liquidityBalance} />
+            </HStack>
             <Tabs colorScheme={"cyan"}>
               <TabList
                 width={"fit-content"}
@@ -107,7 +136,7 @@ function Main() {
                 <TabPanel justifyItems={"space-between"}>
                   <Heading>Swap the Tokens</Heading>
 
-                  <VStack height={"40vh"} paddingTop={"5vh"} spacing={10}>
+                  <VStack height={"40vh"} spacing={10}>
                     {
                       <>
                         <Box p={5}>
@@ -162,6 +191,7 @@ function Main() {
                               onChange={(e) => setSwapAmount(e.target.value)}
                             />
                           </FormControl>
+
                           <FormControl mt={4}>
                             <Button onClick={Swap} colorScheme={"blue"}>
                               Trade
@@ -172,8 +202,56 @@ function Main() {
                     }
                   </VStack>
                 </TabPanel>
-                <TabPanel justifyItems={"space-between"}></TabPanel>
-                <TabPanel justifyItems={"space-between"}></TabPanel>
+                <TabPanel justifyItems={"space-between"}>
+                  <Heading>Add liquidty </Heading>
+
+                  <VStack height={"40vh"} spacing={10}>
+                    <FormControl mt={4}>
+                      <FormLabel>Enter USD Amount</FormLabel>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => setUsdLiquidity(e.target.value)}
+                      />
+                    </FormControl>
+                    <FormControl mt={4}>
+                      <FormLabel>Enter USDT Amount</FormLabel>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => setUsdtLiquidity(e.target.value)}
+                      />
+                    </FormControl>
+
+                    <FormControl mt={4}>
+                      <Button onClick={addLiquidity} colorScheme={"blue"}>
+                        Add Liquidity
+                      </Button>
+                    </FormControl>
+                  </VStack>
+                </TabPanel>
+                <TabPanel justifyItems={"space-between"}>
+                  <Heading>Add liquidty </Heading>
+
+                  <VStack height={"40vh"} spacing={10}>
+                    <FormControl mt={4}>
+                      <FormLabel>Enter Shares to claim</FormLabel>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) =>
+                          setLiquidityClaimAmount(e.target.value)
+                        }
+                      />
+                    </FormControl>
+
+                    <FormControl mt={4}>
+                      <Button onClick={removeLiquidity} colorScheme={"blue"}>
+                        Add Liquidity
+                      </Button>
+                    </FormControl>
+                  </VStack>
+                </TabPanel>
               </TabPanels>
             </Tabs>
           </VStack>
