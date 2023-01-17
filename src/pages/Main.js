@@ -14,6 +14,9 @@ import {
   TabPanel,
   Stack,
   Img,
+  FormControl,
+  FormLabel,
+  Select,
 } from "@chakra-ui/react";
 import Timer from "./components/Timer";
 import { useAccount } from "wagmi";
@@ -34,6 +37,10 @@ function Main() {
   const { address, isConnected } = useAccount();
   const [contract, setContract] = useState(null);
   const [Loader, setLoader] = useState(false);
+  const [swapAmount, setSwapAmount] = useState(0);
+  const [sourceToken, setSourceToken] = useState("usd");
+  const [destinationToken, setDestinationToken] = useState("usdt");
+  const [walletAddress, setWalletAddress] = useState(null);
   const Navigate = useRouter();
 
   async function ensureContractIsFetched() {
@@ -50,10 +57,14 @@ function Main() {
   }
   useEffect(() => {
     if (address) {
+      setWalletAddress(address);
       updateApp();
     }
   }, [address]);
 
+  async function Swap() {
+    alert("Swapping" + swapAmount + sourceToken + " for " + destinationToken);
+  }
   return (
     <Box
       width={"100vw"}
@@ -78,10 +89,9 @@ function Main() {
         borderRadius={"20px"}
         justify={"center"}
       >
-        {!address ? (
-          <ConnectButton />
-        ) : (
-          <VStack paddingTop={["20vh", "10vh"]} justify={"flex-start"}>
+        {!walletAddress && <ConnectButton />}
+        {walletAddress && (
+          <VStack padding={"10vh"}>
             <Tabs colorScheme={"cyan"}>
               <TabList
                 width={"fit-content"}
@@ -95,67 +105,160 @@ function Main() {
 
               <TabPanels>
                 <TabPanel justifyItems={"space-between"}>
-                  <Stack
-                    align={"center"}
-                    direction={["column", "column", "row"]}
-                    spacing={5}
-                  >
-                    <Heading>Swap the Tokens</Heading>
-                  </Stack>
+                  <Heading>Swap the Tokens</Heading>
 
-                  <VStack height={"60vh"} paddingTop={"10vh"} spacing={10}>
+                  <VStack height={"40vh"} paddingTop={"5vh"} spacing={10}>
                     {
                       <>
-                        <Input variant="outline" />
+                        <Box p={5}>
+                          <FormControl>
+                            <FormLabel>Source Token</FormLabel>
+                            <Select
+                              colorScheme={"blue"}
+                              value={sourceToken}
+                              cursor={"pointer"}
+                              onChange={(e) => {
+                                setSourceToken(e.target.value);
+                                if (e.target.value == "usd")
+                                  setDestinationToken("usdt");
+                                else setDestinationToken("usd");
+                              }}
+                            >
+                              <option
+                                style={{
+                                  color: "black",
+                                  cursor: "pointer",
+                                }}
+                                value="usd"
+                              >
+                                USD
+                              </option>
+                              <option
+                                style={{
+                                  color: "black",
+                                  cursor: "pointer",
+                                }}
+                                value="usdt"
+                              >
+                                USDt
+                              </option>
+                            </Select>
+                          </FormControl>
+                          <FormControl>
+                            <FormLabel>Destination Token</FormLabel>
+                            <Input
+                              value={destinationToken.toUpperCase()}
+                              disabled
+                            />
+                          </FormControl>
 
-                        <Button colorScheme={"green"}>Swap</Button>
+                          <FormControl mt={4}>
+                            <FormLabel>
+                              Enter {sourceToken.toUpperCase()} Amount
+                            </FormLabel>
+                            <Input
+                              type="number"
+                              value={swapAmount}
+                              onChange={(e) => setSwapAmount(e.target.value)}
+                            />
+                          </FormControl>
+                          <FormControl mt={4}>
+                            <Button onClick={Swap} colorScheme={"blue"}>
+                              Trade
+                            </Button>
+                          </FormControl>
+                        </Box>
                       </>
                     }
                   </VStack>
                 </TabPanel>
-                <TabPanel justifyItems={"space-between"}>
-                  <Stack
-                    align={"center"}
-                    direction={["column", "column", "row"]}
-                    spacing={5}
-                  >
-                    <Heading>Add Liquidity</Heading>
-                  </Stack>
-
-                  <VStack height={"60vh"} paddingTop={"10vh"} spacing={10}>
-                    {
-                      <>
-                        <Input variant="outline" />
-
-                        <Button colorScheme={"green"}>Swap</Button>
-                      </>
-                    }
-                  </VStack>
-                </TabPanel>
-                <TabPanel justifyItems={"space-between"}>
-                  <Stack
-                    align={"center"}
-                    direction={["column", "column", "row"]}
-                    spacing={5}
-                  >
-                    <Heading>Remove Liquidity</Heading>
-                  </Stack>
-
-                  <VStack height={"60vh"} paddingTop={"10vh"} spacing={10}>
-                    {
-                      <>
-                        <Input variant="outline" />
-
-                        <Button colorScheme={"green"}>Swap</Button>
-                      </>
-                    }
-                  </VStack>
-                </TabPanel>
+                <TabPanel justifyItems={"space-between"}></TabPanel>
+                <TabPanel justifyItems={"space-between"}></TabPanel>
               </TabPanels>
             </Tabs>
           </VStack>
         )}
       </VStack>
+
+      {/* <VStack
+        width={"70vw"}
+        height={"70vh"}
+        color={"white"}
+        padding={"10vw"}
+        background={`linear-gradient(rgba(0, 0,0, 0.4), rgba(0, 0, 0, 0.8))`}
+        backgroundSize={"cover"}
+        // border={"1px solid rgba(255,255,255,0.2)"}
+        boxShadow={"1px 1px 1px 1px white"}
+        borderRadius={"20px"}
+        justify={"center"}
+      >
+        {!walletAddress ? (
+          <ConnectButton />
+        ) : (
+          <Tabs colorScheme={"cyan"}>
+            <TabList
+              width={"fit-content"}
+              display={"flex"}
+              justifyContent={"space-between"}
+            >
+              <Tab>Swap</Tab>
+              <Tab>Add Liquidity</Tab>
+              <Tab>Remove Liquidity</Tab>
+            </TabList>
+
+            <TabPanels>
+              <TabPanel justifyItems={"space-between"}>
+                <Heading>Swap the Tokens</Heading>
+
+                <VStack height={"60vh"} paddingTop={"10vh"} spacing={10}>
+                  {
+                    <>
+                      <Box p={5}>
+                        <FormControl>
+                          <FormLabel>Source Token</FormLabel>
+                          <Select
+                            value={sourceToken}
+                            onChange={(e) => {
+                              setSourceToken(e.target.value);
+                              if (e.target.value == "usd")
+                                setDestinationToken("usdt");
+                              else setDestinationToken("usd");
+                            }}
+                          >
+                            <option value="usd">USD</option>
+                            <option value="usdt">USDt</option>
+                          </Select>
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Destination Token</FormLabel>
+                          <Input value={destinationToken} disabled />
+                        </FormControl>
+
+                        <FormControl mt={4}>
+                          <FormLabel>
+                            Enter {sourceToken.toLocaleUpperCase()} Amount
+                          </FormLabel>
+                          <Input
+                            type="number"
+                            value={swapAmount}
+                            onChange={(e) => setSwapAmount(e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl mt={4}>
+                          <Button colorScheme={"blue"}>Trade</Button>
+                        </FormControl>
+                      </Box>
+                    </>
+                  }
+                </VStack>
+              </TabPanel>
+              <TabPanel justifyItems={"space-between"}></TabPanel>
+              <TabPanel justifyItems={"space-between"}></TabPanel>
+            </TabPanels>
+          </Tabs>
+
+        )}
+      </VStack> */}
     </Box>
   );
 }
