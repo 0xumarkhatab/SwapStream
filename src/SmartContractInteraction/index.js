@@ -478,7 +478,9 @@ export async function getSigner() {
 export async function getERCContract(signer, contractName, setter) {
   let contract;
   if (contractName == "usdt") {
+    console.log("usdt contract");
     contract = new ethers.Contract(usdt_deployedAddress, ERC20Abi, signer);
+    console.log(contract);
   } else if (contractName == "usd") {
     contract = new ethers.Contract(usd_deployedAddress, ERC20Abi, signer);
   } else {
@@ -502,15 +504,23 @@ export async function getPlatformContract(signer, setter) {
   return contract;
 }
 
-export async function swap(contract, tokenIn, amount, updator) {
+export async function getContractAddress(tag) {}
+export async function swap(
+  contract,
+  tokenIn,
+  amount,
+  intermediateUpdator,
+  updator
+) {
   try {
     let tokenAddress;
     if (tokenIn == "usd") {
       tokenAddress = usd_deployedAddress;
     } else if (tokenIn == "usdt") {
-      tokenAddress == usdt_deployedAddress;
+      tokenAddress = usdt_deployedAddress;
     }
-    let res = await contract?.swap(tokenAddress, amount);
+    let res = await contract?.swap(tokenAddress, parseEther(amount.toString()));
+    intermediateUpdator();
     await res.wait();
     updator();
   } catch (e) {
@@ -592,7 +602,7 @@ export async function RemoveLiquidity(
   updator
 ) {
   try {
-    let res = await contract?.removeLiquidity(shares);
+    let res = await contract?.removeLiquidity(parseEther(shares.toString()));
     intermediateUpdator();
 
     await res.wait();

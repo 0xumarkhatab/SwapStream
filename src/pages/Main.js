@@ -109,6 +109,38 @@ function Main() {
     }
   }, [platformContract, usdContract, usdtContract]);
 
+  async function handleAllowance(
+    _contract,
+    allowedTokens,
+    desiredAmount,
+    label,
+    postAllowance
+  ) {
+    console.log("Allowed metrics ,", {
+      allowedTokens,
+      desiredAmount,
+      label,
+    });
+
+    if (allowedTokens < desiredAmount) {
+      setLoadingMessage("Approve Platform !");
+      let res = await approve(_contract, desiredAmount - allowedTokens, () => {
+        setLoadingMessage("Approving...");
+      });
+      if (res) {
+        alert("Successfully granted permission !");
+        if (postAllowance) postAllowance();
+      } else {
+        setLoader(false);
+        alert("Error in Approving !");
+        return 0;
+      }
+    } else {
+      if (postAllowance) {
+        postAllowance();
+      }
+    }
+  }
   async function Swap() {
     if (!platformContract) {
       await getPlatformContract();
@@ -117,12 +149,28 @@ function Main() {
 
     let _signer = await getSigner();
     let _contract = await getERCContract(_signer, sourceToken);
-    await allowance(_contract, walletAddress, swapAmount, async () => {
-      await swap(platformContract, sourceToken, swapAmount, () => {
-        setLoader(false);
-        alert("Tokens Swapped!");
-      });
-    });
+    let allowedTokens = await allowance(_contract, walletAddress);
+    let res = await handleAllowance(
+      _contract,
+      allowedTokens,
+      swapAmount,
+      sourceToken,
+      async () => {
+        await swap(
+          platformContract,
+          sourceToken,
+          swapAmount,
+          () => {
+            setLoadingMessage("Swapping...");
+          },
+          () => {
+            setLoader(false);
+            updateApp();
+            alert("Tokens Swapped!");
+          }
+        );
+      }
+    );
   }
   async function addLiquidity() {
     setLoader(true);
@@ -134,62 +182,18 @@ function Main() {
 
     let _signer = await getSigner();
 
-    let _usd_contract = usdContract
-      ? usdContract
-      : await getERCContract(_signer, "usd");
-    let _usdt_contract = usdtContract
-      ? usdtContract
-      : await getERCContract(_signer, "usdt");
+    let _usd_contract = await getERCContract(_signer, "usd");
+    let _usdt_contract = await getERCContract(_signer, "usdt");
 
     let allowedUSD = await allowance(_usd_contract, walletAddress);
     let allowedUSDt = await allowance(_usdt_contract, walletAddress);
-    console.log("Allowed metrics ,", {
-      allowedUSD,
-      usdLiquidity,
-      allowedUSDt,
-      usdtLiquidity,
-    });
     if (allowedUSD < usdLiquidity || allowedUSDt < usdtLiquidity) {
-      if (allowedUSD < usdLiquidity) {
-        setLoadingMessage("Approve Platform !");
-        let res = await approve(
-          _usd_contract,
-          usdLiquidity - allowedUSD,
-          () => {
-            setLoadingMessage("Approving...");
-          }
-        );
-        if (res) {
-          alert("Successfully granted permission !");
-        } else {
-          setLoader(false);
-          alert("Error in Approving !");
-          return 0;
-        }
-      }
-
-      if (allowedUSDt < usdtLiquidity) {
-        alert("Platform is not allowed for trading enough USDt !");
-
-        let res = await approve(
-          _usdt_contract,
-          usdtLiquidity - allowedUSDt,
-          () => {
-            setLoadingMessage("Approving...");
-          }
-        );
-
-        if (res) {
-          alert("Successfully granted permission !");
-        } else {
-          setLoader(false);
-          alert("Error in Approving !");
-          return 0;
-        }
-      }
+      await handleAllowance(_usd_contract, allowedUSD, usdLiquidity, "usd");
+      await handleAllowance(_usdt_contract, allowedUSDt, usdtLiquidity, "usdt");
     } else {
       alert("Platform is Allowed for trading tokens !");
     }
+
     setLoadingMessage("Adding liquidity..");
 
     await AddLiquidity(
@@ -212,7 +216,7 @@ function Main() {
 
     await RemoveLiquidity(
       platformContract,
-      parseEther(liquidityClaimAmount.toString()),
+      liquidityClaimAmount,
       () => {
         setLoadingMessage("Removing...");
       },
@@ -326,7 +330,9 @@ function Main() {
                             <Input
                               type="number"
                               value={swapAmount}
-                              onChange={(e) => setSwapAmount(e.target.value)}
+                              onChange={(e) =>
+                                setSwapAmount(parseInt(e.target.value))
+                              }
                             />
                           </FormControl>
 
@@ -336,7 +342,7 @@ function Main() {
                               onClick={Swap}
                               colorScheme={"blue"}
                             >
-                              {Loader ? "Trading..." : "Trade"}
+                              {Loader ? loadingMessage : "Trade"}
                             </Button>
                           </FormControl>
                         </Box>
