@@ -267,7 +267,7 @@ function Main() {
               text={`Mint some USDs from the contract address 0x9634CFB05682Ce0cfbbF34298532DeCe9FaAFEc4`}
             />
             <InstructionStep
-              number={2}
+              number={3}
               text={`Mint some USDTs from the contract address 0x947Afe39bcda41df6AaA9c0925EEADb1a27474B0`}
             />
             <FormControl mt={4}>
