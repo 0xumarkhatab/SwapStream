@@ -43,6 +43,7 @@ import {
 import { useRouter } from "next/router";
 import BalanceItem from "./components/BalanceItem";
 import { parseEther } from "ethers/lib/utils.js";
+import InstructionStep from "./components/InstructionStep";
 function Main() {
   const { address, isConnected } = useAccount();
   const [platformContract, setPlatformContract] = useState(null);
@@ -59,6 +60,7 @@ function Main() {
   const [usdBalance, setUsdBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [liquidityBalance, setLiquidityBalance] = useState(0);
+  const [testInstructionsReaded, setTestInstructionsReaded] = useState(false);
   /**
    * liquidity state variables
    */
@@ -253,7 +255,35 @@ function Main() {
         justify={"center"}
       >
         {!walletAddress && <ConnectButton />}
-        {walletAddress && (
+
+        {walletAddress && !testInstructionsReaded && (
+          <VStack padding={"10vh"}>
+            <InstructionStep
+              number={1}
+              text={"Make Sure you have some MATIC in your Wallet"}
+            />
+            <InstructionStep
+              number={2}
+              text={`Mint some USDs from the contract address 0x9634CFB05682Ce0cfbbF34298532DeCe9FaAFEc4`}
+            />
+            <InstructionStep
+              number={2}
+              text={`Mint some USDTs from the contract address 0x947Afe39bcda41df6AaA9c0925EEADb1a27474B0`}
+            />
+            <FormControl mt={4}>
+              <Button
+                disabled={Loader}
+                onClick={() => {
+                  setTestInstructionsReaded(true);
+                }}
+                colorScheme={"blue"}
+              >
+                Get Started
+              </Button>
+            </FormControl>
+          </VStack>
+        )}
+        {testInstructionsReaded && walletAddress && (
           <VStack padding={"10vh"}>
             <HStack width={"50vw"} justify={"center"} spacing={10}>
               <Heading fontSize={"18px"}>{"Balances "}</Heading>
