@@ -1,19 +1,21 @@
-import { HStack, Text } from "@chakra-ui/react";
+import { color, HStack, Text } from "@chakra-ui/react";
 import React from "react";
 
-function BalanceItem({ label, amount }) {
+function BalanceItem({ label, amount, isPlain, bg, color, weight }) {
   return (
     <HStack
-      bg={"black"}
+      bg={bg ? bg : "black"}
+      color={color ? color : "white"}
       border={"1px solid white"}
+      fontWeight={weight ? weight : "normal"}
       borderRadius={"10px"}
-      minW={"130px"}
+      minW={"140px"}
       padding={"10px"}
       justify={"space-evenly"}
     >
       <Text>{label}</Text>
-      <Text>|</Text>
-      <Text>{amount}</Text>
+      {!isPlain && <Text>|</Text>}
+      {amount != undefined && <Text>{parseFloat(amount).toFixed(2)}</Text>}
     </HStack>
   );
 }

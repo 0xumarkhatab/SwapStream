@@ -22,22 +22,35 @@ import Timer from "./components/Timer";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
+  AddLiquidity,
+  allowance,
+  approve,
   claimReward,
+  getBalance,
   getClaimDeadline,
   getContract,
+  getERCContract,
   getEstimatedReward,
+  getPlatformContract,
   getSigner,
   getStakeDeadline,
+  RemoveLiquidity,
   stakeAmount,
   stakingRewardRatePerSecond,
   startStaking,
+  swap,
 } from "@/SmartContractInteraction";
 import { useRouter } from "next/router";
 import BalanceItem from "./components/BalanceItem";
 function Main() {
   const { address, isConnected } = useAccount();
-  const [contract, setContract] = useState(null);
+  const [platformContract, setPlatformContract] = useState(null);
+  const [usdContract, setUsdContract] = useState(null);
+  const [usdtContract, setUsdtContract] = useState(null);
+
   const [Loader, setLoader] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(null);
+
   const [swapAmount, setSwapAmount] = useState(0);
   const [sourceToken, setSourceToken] = useState("usd");
   const [destinationToken, setDestinationToken] = useState("usdt");
@@ -54,39 +67,155 @@ function Main() {
 
   const Navigate = useRouter();
 
-  async function ensureContractIsFetched() {
-    if (!contract) {
-      let _signer = await getSigner();
-      let _contract = await getContract(_signer, setContract);
-      return _contract;
-    }
-    return contract;
+  async function fetchContracts() {
+    let _signer = await getSigner();
+    platformContract == null &&
+      (await getPlatformContract(_signer, setPlatformContract));
+
+    usdContract == null &&
+      (await getERCContract(_signer, "usd", setUsdContract));
+    usdtContract == null &&
+      (await getERCContract(_signer, "usdt", setUsdtContract));
   }
 
+  async function getBalances() {
+    if (!platformContract || !usdContract || !usdtContract) {
+      await fetchContracts();
+      return 0;
+    }
+    await getBalance(usdContract, address, "usd", setUsdBalance);
+    await getBalance(usdtContract, address, "usdt", setUsdtBalance);
+    await getBalance(
+      platformContract,
+      address,
+      "liquidity",
+      setLiquidityBalance
+    );
+  }
   async function updateApp() {
-    console.log("updating");
+    setWalletAddress(address);
+    await fetchContracts();
+    await getBalances();
   }
   useEffect(() => {
     if (address) {
-      setWalletAddress(address);
       updateApp();
     }
   }, [address]);
+  useEffect(() => {
+    if (platformContract && usdContract && usdtContract) {
+      getBalances();
+    }
+  }, [platformContract, usdContract, usdtContract]);
 
   async function Swap() {
-    alert("Swapping" + swapAmount + sourceToken + " for " + destinationToken);
+    if (!platformContract) {
+      await getPlatformContract();
+    }
+    setLoader(true);
+
+    let _signer = await getSigner();
+    let _contract = await getERCContract(_signer, sourceToken);
+    await allowance(_contract, walletAddress, swapAmount, async () => {
+      await swap(platformContract, sourceToken, swapAmount, () => {
+        setLoader(false);
+        alert("Tokens Swapped!");
+      });
+    });
   }
   async function addLiquidity() {
-    alert(
-      "adding " +
-        usdLiquidity +
-        " USD and " +
-        usdtLiquidity +
-        " USDT to liquidity"
+    setLoader(true);
+
+    if (!platformContract) {
+      setLoadingMessage("Preparing...");
+      await fetchContracts();
+    }
+
+    let _signer = await getSigner();
+
+    let _usd_contract = usdContract
+      ? usdContract
+      : await getERCContract(_signer, "usd");
+    let _usdt_contract = usdtContract
+      ? usdtContract
+      : await getERCContract(_signer, "usdt");
+
+    let allowedUSD = await allowance(_usd_contract, walletAddress);
+    let allowedUSDt = await allowance(_usdt_contract, walletAddress);
+    console.log("Allowed metrics ,", {
+      allowedUSD,
+      usdLiquidity,
+      allowedUSDt,
+      usdtLiquidity,
+    });
+    if (allowedUSD < usdLiquidity || allowedUSDt < usdtLiquidity) {
+      if (allowedUSD < usdLiquidity) {
+        setLoadingMessage("Approve Platform !");
+        let res = await approve(
+          _usd_contract,
+          usdLiquidity - allowedUSD,
+          () => {
+            setLoadingMessage("Approving...");
+          }
+        );
+        if (res) {
+          alert("Successfully granted permission !");
+        } else {
+          setLoader(false);
+          alert("Error in Approving !");
+          return 0;
+        }
+      }
+
+      if (allowedUSDt < usdtLiquidity) {
+        alert("Platform is not allowed for trading enough USDt !");
+
+        let res = await approve(
+          _usdt_contract,
+          usdtLiquidity - allowedUSDt,
+          () => {
+            setLoadingMessage("Approving...");
+          }
+        );
+
+        if (res) {
+          alert("Successfully granted permission !");
+        } else {
+          setLoader(false);
+          alert("Error in Approving !");
+          return 0;
+        }
+      }
+    } else {
+      alert("Platform is Allowed for trading tokens !");
+    }
+    setLoadingMessage("Adding liquidity..");
+
+    await AddLiquidity(
+      platformContract,
+      usdLiquidity,
+      usdtLiquidity,
+      (isSuccess, errMessage) => {
+        setLoader(false);
+        setLoadingMessage(null);
+        updateApp();
+        isSuccess
+          ? alert("Liquidity Added 🎉")
+          : alert("Failed to add liquidity! " + errMessage);
+      }
     );
   }
+
   async function removeLiquidity() {
-    alert("removing " + liquidityClaimAmount + " liquidity balance");
+    setLoader(true);
+
+    await RemoveLiquidity(platformContract, liquidityClaimAmount, () => {
+      setLoader(false);
+
+      setLiquidityClaimAmount(0);
+
+      alert("Liquidity tokens Claimed !");
+    });
   }
 
   return (
@@ -117,7 +246,10 @@ function Main() {
         {walletAddress && (
           <VStack padding={"10vh"}>
             <HStack width={"50vw"} justify={"center"} spacing={10}>
+              <Heading fontSize={"18px"}>{"Balances "}</Heading>
+
               <BalanceItem label={"USD"} amount={usdBalance} />
+
               <BalanceItem label={"USDt"} amount={usdtBalance} />
               <BalanceItem label={"Liquidity"} amount={liquidityBalance} />
             </HStack>
@@ -193,8 +325,12 @@ function Main() {
                           </FormControl>
 
                           <FormControl mt={4}>
-                            <Button onClick={Swap} colorScheme={"blue"}>
-                              Trade
+                            <Button
+                              disabled={Loader}
+                              onClick={Swap}
+                              colorScheme={"blue"}
+                            >
+                              {Loader ? "Trading..." : "Trade"}
                             </Button>
                           </FormControl>
                         </Box>
@@ -211,7 +347,9 @@ function Main() {
                       <Input
                         type="number"
                         placeholder="0"
-                        onChange={(e) => setUsdLiquidity(e.target.value)}
+                        onChange={(e) =>
+                          setUsdLiquidity(parseInt(e.target.value))
+                        }
                       />
                     </FormControl>
                     <FormControl mt={4}>
@@ -219,19 +357,25 @@ function Main() {
                       <Input
                         type="number"
                         placeholder="0"
-                        onChange={(e) => setUsdtLiquidity(e.target.value)}
+                        onChange={(e) =>
+                          setUsdtLiquidity(parseInt(e.target.value))
+                        }
                       />
                     </FormControl>
 
                     <FormControl mt={4}>
-                      <Button onClick={addLiquidity} colorScheme={"blue"}>
-                        Add Liquidity
+                      <Button
+                        disabled={Loader}
+                        onClick={addLiquidity}
+                        colorScheme={"blue"}
+                      >
+                        {Loader ? loadingMessage : "Add Liquidity"}
                       </Button>
                     </FormControl>
                   </VStack>
                 </TabPanel>
                 <TabPanel justifyItems={"space-between"}>
-                  <Heading>Add liquidty </Heading>
+                  <Heading>Remove liquidty </Heading>
 
                   <VStack height={"40vh"} spacing={10}>
                     <FormControl mt={4}>
@@ -246,8 +390,13 @@ function Main() {
                     </FormControl>
 
                     <FormControl mt={4}>
-                      <Button onClick={removeLiquidity} colorScheme={"blue"}>
-                        Add Liquidity
+                      <Button
+                        disabled={Loader}
+                        onClick={removeLiquidity}
+                        colorScheme={"red"}
+                      >
+                        {Loader ? "Removing" : "Remove"} Liquidity
+                        {Loader && "..."}
                       </Button>
                     </FormControl>
                   </VStack>

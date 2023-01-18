@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { parseEther } from "ethers/lib/utils.js";
 
 let ERC20Abi = [
   {
@@ -452,7 +453,7 @@ let AMM_abi = [
 let usd_deployedAddress = "0x9634CFB05682Ce0cfbbF34298532DeCe9FaAFEc4";
 let usdt_deployedAddress = "0x947Afe39bcda41df6AaA9c0925EEADb1a27474B0";
 let SwapStream_DeployedContractAddress =
-  "0x45c9584b09d92BaE3f529a2CdBE5e285fcc7Aab6";
+  "0xF099D5bA8d7E203aaF16cEE70006523fe16F269E";
 
 export async function getSigner() {
   if (window.ethereum) {
@@ -489,7 +490,7 @@ export async function getERCContract(signer, contractName, setter) {
   return contract;
 }
 
-export async function getPlatformContract(signer, contractName, setter) {
+export async function getPlatformContract(signer, setter) {
   let contract = new ethers.Contract(
     SwapStream_DeployedContractAddress,
     AMM_abi,
@@ -515,18 +516,70 @@ export async function swap(contract, tokenIn, amount, updator) {
   } catch (e) {
     console.log(e);
     updator();
+    return 0;
+  }
+}
+
+export async function approve(contract, desiredAmount, updator) {
+  try {
+    let res = await contract?.approve(
+      SwapStream_DeployedContractAddress,
+      parseEther(desiredAmount.toString())
+    );
+    updator();
+    await res.wait();
+    return true;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+}
+
+export async function allowance(contract, address, desiredAmount) {
+  try {
+    let res = await contract?.allowance(
+      address,
+      SwapStream_DeployedContractAddress
+    );
+    res = parseInt(res);
+    console.log("allowed tokens are ", res);
+    res = res / 10 ** 18;
+    console.log("ETH :allowed tokens are ", res);
+    return res;
+  } catch (e) {
+    console.log(e);
+    return 0;
+  }
+}
+
+export async function getBalance(contract, userAddress, label, setter) {
+  try {
+    let bal = await contract?.balanceOf(userAddress);
+    bal = parseInt(bal);
+    bal = bal / 10 ** 18;
+    // console.log("balance of " + label + " is ", bal);
+
+    if (setter) setter(bal);
+    return bal;
+  } catch (e) {
+    console.log(e);
 
     return 0;
   }
 }
+
 export async function AddLiquidity(contract, amount1, amount2, updator) {
   try {
-    let res = await contract?.addLiquidity(amount1, amount2);
+    let res = await contract?.addLiquidity(
+      parseEther(amount1.toString()),
+      parseEther(amount2.toString()),
+      {}
+    );
     await res.wait();
-    updator();
+    updator(true);
   } catch (e) {
-    console.log(e);
-    updator();
+    console.log({ e });
+    updator(false, e.reason);
 
     return 0;
   }
