@@ -585,9 +585,16 @@ export async function AddLiquidity(contract, amount1, amount2, updator) {
   }
 }
 
-export async function RemoveLiquidity(contract, shares, updator) {
+export async function RemoveLiquidity(
+  contract,
+  shares,
+  intermediateUpdator,
+  updator
+) {
   try {
     let res = await contract?.removeLiquidity(shares);
+    intermediateUpdator();
+
     await res.wait();
     updator();
   } catch (e) {

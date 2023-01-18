@@ -42,6 +42,7 @@ import {
 } from "@/SmartContractInteraction";
 import { useRouter } from "next/router";
 import BalanceItem from "./components/BalanceItem";
+import { parseEther } from "ethers/lib/utils.js";
 function Main() {
   const { address, isConnected } = useAccount();
   const [platformContract, setPlatformContract] = useState(null);
@@ -209,13 +210,18 @@ function Main() {
   async function removeLiquidity() {
     setLoader(true);
 
-    await RemoveLiquidity(platformContract, liquidityClaimAmount, () => {
-      setLoader(false);
-
-      setLiquidityClaimAmount(0);
-
-      alert("Liquidity tokens Claimed !");
-    });
+    await RemoveLiquidity(
+      platformContract,
+      parseEther(liquidityClaimAmount.toString()),
+      () => {
+        setLoadingMessage("Removing...");
+      },
+      () => {
+        setLoader(false);
+        updateApp();
+        alert("Liquidity tokens Claimed !");
+      }
+    );
   }
 
   return (
@@ -357,9 +363,7 @@ function Main() {
                       <Input
                         type="number"
                         placeholder="0"
-                        onChange={(e) =>
-                          setUsdtLiquidity(parseInt(e.target.value))
-                        }
+                        onChange={(e) => setUsdtLiquidity()}
                       />
                     </FormControl>
 
@@ -382,10 +386,16 @@ function Main() {
                       <FormLabel>Enter Shares to claim</FormLabel>
                       <Input
                         type="number"
-                        placeholder="0"
-                        onChange={(e) =>
-                          setLiquidityClaimAmount(e.target.value)
-                        }
+                        placeholder={liquidityBalance.toFixed(2)}
+                        defaultValue={liquidityBalance}
+                        onChange={(e) => {
+                          let val = parseInt(e.target.value);
+                          if (val <= liquidityBalance)
+                            setLiquidityClaimAmount(val);
+                          else {
+                            alert("You do not have this much equity !");
+                          }
+                        }}
                       />
                     </FormControl>
 
